@@ -16,7 +16,8 @@ import (
 type PartialDataId string
 
 var pdEtcdMutex = &sync.Mutex{}
-var pdCacheMutex = &sync.Mutex{}
+
+// var pdCacheMutex = &sync.Mutex{}
 
 func newPartialDataId(reqId ReqId) PartialDataId {
 	return PartialDataId("partialData_" + reqId)
@@ -196,8 +197,8 @@ func DeleteAllPartialData(reqId ReqId, alsoFromEtcd bool) (int64, error) {
 // savePartialDataInCache appends in cache a partial data related to a specific request and dagNode in a Dag
 func savePartialDataInCache(pds ...*PartialData) bool {
 	var partialDataIdType PartialDataId
-	pdCacheMutex.Lock()
-	defer pdCacheMutex.Unlock()
+	// pdCacheMutex.Lock()
+	// defer pdCacheMutex.Unlock()
 	for _, pd := range pds {
 		partialDataIdType = newPartialDataId(pd.ReqId)
 
@@ -240,8 +241,8 @@ func savePartialDataToEtcd(pd *PartialData) error {
 }
 
 func getPartialDataFromCache(pdId PartialDataId, nodeId DagNodeId) ([]*PartialData, error) {
-	pdCacheMutex.Lock()
-	defer pdCacheMutex.Unlock()
+	// pdCacheMutex.Lock()
+	// defer pdCacheMutex.Unlock()
 	subMap, ok := pdCache.Load(pdId)
 	if !ok {
 		return nil, fmt.Errorf("cannot find partial data submap for request id %s\n", pdId)
@@ -336,8 +337,8 @@ func getAllPartialDataFromEtcd(requestId ReqId) (map[DagNodeId][]*PartialData, e
 
 // getAllPartialDataFromCache returns a *sync.Map[DagNodeId, []*PartialData]
 func getAllPartialDataFromCache(requestId PartialDataId) *sync.Map {
-	pdCacheMutex.Lock()
-	defer pdCacheMutex.Unlock()
+	// pdCacheMutex.Lock()
+	// defer pdCacheMutex.Unlock()
 	partialDataMap, _ := pdCache.LoadOrStore(requestId, &sync.Map{})
 	partialDataMapTyped := partialDataMap.(*sync.Map)
 	return partialDataMapTyped
