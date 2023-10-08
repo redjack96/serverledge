@@ -185,7 +185,7 @@ func DeleteAllPartialData(reqId ReqId) (int64, error) {
 func savePartialDataInCache(pds ...*PartialData) bool {
 	//c := cache.GetCacheInstance()
 	pdCacheMutex.Lock()
-	pdCacheMutex.Unlock()
+	defer pdCacheMutex.Unlock()
 	for _, pd := range pds {
 		partialDataIdType := newPartialDataId(pd.ReqId)
 		//partialDataId := string(partialDataIdType)
