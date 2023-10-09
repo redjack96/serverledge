@@ -16,7 +16,7 @@ type ProgressId string
 
 var progressMutexCache = &sync.Mutex{}
 var progressMutexEtcd = &sync.Mutex{}
-var progressCache = &sync.Map{} // Map[ProgressId, *Progress]
+var progressCache = hashmap.New[ProgressId, *Progress]()
 
 func newProgressId(reqId ReqId) ProgressId {
 	return ProgressId("progress_" + reqId)
@@ -465,7 +465,7 @@ func RetrieveProgress(reqId ReqId, tryFromEtcd bool) (*Progress, bool) {
 func DeleteProgress(reqId ReqId, alsoFromEtcd bool) error {
 	// Remove the progress from the local cache
 	progressMutexCache.Lock()
-	progressCache.Delete(newProgressId(reqId))
+	progressCache.Del(newProgressId(reqId))
 	progressMutexCache.Unlock()
 
 	if alsoFromEtcd {
@@ -493,7 +493,7 @@ func saveProgressInCache(p *Progress) bool {
 	progressIdType := newProgressId(p.ReqId)
 	progressMutexCache.Lock()
 	defer progressMutexCache.Unlock()
-	_, _ = progressCache.LoadOrStore(progressIdType, p) // [ProgressId, *Progress]
+	_, _ = progressCache.GetOrInsert(progressIdType, p)
 	return true
 }
 
@@ -524,11 +524,11 @@ func getProgressFromCache(progressId ProgressId) (*Progress, bool) {
 	c := progressCache
 	progressMutexCache.Lock()
 	defer progressMutexCache.Unlock()
-	progress, found := c.Load(progressId)
+	progress, found := c.Get(progressId)
 	if !found {
 		return nil, false
 	}
-	return progress.(*Progress), true
+	return progress, true
 }
 
 func getProgressFromEtcd(requestId ReqId) (*Progress, error) {

@@ -86,7 +86,7 @@ func TestPartialDataCache(t *testing.T) {
 		retrievedPartialData, err := fc.RetrieveAllPartialData(request, cache.Persist)
 		u.AssertNil(t, err)
 		count := 0
-		retrievedPartialData.Range(func(key, value any) bool {
+		retrievedPartialData.Range(func(key fc.DagNodeId, value []*fc.PartialData) bool {
 			count++
 			return true
 		})
