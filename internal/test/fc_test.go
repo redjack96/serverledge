@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/fc"
 	"github.com/grussorusso/serverledge/internal/function"
+	"github.com/grussorusso/serverledge/internal/node"
 	u "github.com/grussorusso/serverledge/utils"
 	"github.com/lithammer/shortuuid"
 	"log"
@@ -34,7 +35,7 @@ func TestMarshalingFunctionComposition(t *testing.T) {
 // TestComposeFC checks the CREATE, GET and DELETE functionality of the Function Composition
 func TestComposeFC(t *testing.T) {
 
-	if !INTEGRATION_TEST {
+	if !IntegrationTest {
 		t.Skip()
 	}
 
@@ -88,7 +89,7 @@ func TestComposeFC(t *testing.T) {
 // TestInvokeFC executes a Sequential Dag of length N, where each node executes a simple increment function.
 func TestInvokeFC(t *testing.T) {
 
-	if !INTEGRATION_TEST {
+	if !IntegrationTest {
 		t.Skip()
 	}
 
@@ -128,11 +129,9 @@ func TestInvokeFC(t *testing.T) {
 
 // TestInvokeChoiceFC executes a Choice Dag with N alternatives, and it executes only the second one. The functions are all the same increment function
 func TestInvokeChoiceFC(t *testing.T) {
-	if !INTEGRATION_TEST {
+	if !IntegrationTest {
 		t.Skip()
 	}
-	//repeat := 3
-	//for i := 0; i < repeat; i++ {
 	fcName := "test"
 	// CREATE - we create a test function composition
 	input := 1
@@ -156,7 +155,6 @@ func TestInvokeChoiceFC(t *testing.T) {
 		NextBranch(fc.CreateSequenceDag(doublePy)).
 		EndChoiceAndBuild()
 
-	// dag, errDag := fc.CreateChoiceDag(conds, func() (*fc.Dag, error) { return fc.CreateSequenceDag(fArr) })
 	u.AssertNil(t, errDag)
 	fcomp := fc.NewFC(fcName, *dag, []*function.Function{incJs, incPy, doublePy}, true)
 	err1 := fcomp.SaveToEtcd()
@@ -180,14 +178,11 @@ func TestInvokeChoiceFC(t *testing.T) {
 	// cleaning up function composition and function
 	err3 := fcomp.Delete()
 	u.AssertNil(t, err3)
-	//}
-
-	//u.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
 }
 
 // TestInvokeFC_DifferentFunctions executes a Sequential Dag of length 2, with two different functions (in different languages)
 func TestInvokeFC_DifferentFunctions(t *testing.T) {
-	if !INTEGRATION_TEST {
+	if !IntegrationTest {
 		t.Skip()
 	}
 
@@ -249,7 +244,7 @@ func TestInvokeFC_DifferentFunctions(t *testing.T) {
 
 // TestInvokeFC_BroadcastFanOut executes a Parallel Dag with N parallel branches
 func TestInvokeFC_BroadcastFanOut(t *testing.T) {
-	if !INTEGRATION_TEST {
+	if !IntegrationTest {
 		t.Skip()
 	}
 	//for i := 0; i < 1; i++ {
@@ -293,7 +288,7 @@ func TestInvokeFC_BroadcastFanOut(t *testing.T) {
 // TestInvokeFC_Concurrent executes concurrently m times a Sequential Dag of length N, where each node executes a simple increment function.
 func TestInvokeFC_Concurrent(t *testing.T) {
 
-	if !INTEGRATION_TEST {
+	if !IntegrationTest {
 		t.Skip()
 	}
 
@@ -313,7 +308,7 @@ func TestInvokeFC_Concurrent(t *testing.T) {
 	err1 := fcomp.SaveToEtcd()
 	u.AssertNil(t, err1)
 
-	concurrencyLevel := 4
+	concurrencyLevel := 10
 	start := make(chan int)
 	results := make(map[int]chan interface{})
 	errors := make(map[int]chan error)
@@ -332,7 +327,7 @@ func TestInvokeFC_Concurrent(t *testing.T) {
 			params := make(map[string]interface{})
 			params[f.Signature.GetInputs()[0].Name] = i
 
-			request := fc.NewCompositionRequest(fmt.Sprintf("goroutine %d", i), &fcomp, params)
+			request := fc.NewCompositionRequest(fmt.Sprintf("goroutine_%d", i), &fcomp, params)
 			// wait until all goroutines are ready
 			<-start
 			fmt.Printf("goroutine %d started invoking\n", i)
@@ -369,12 +364,16 @@ func TestInvokeFC_Concurrent(t *testing.T) {
 	err3 := fcomp.Delete()
 	u.AssertNil(t, err3)
 
-	//u.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
+	// removing functions container to release resources
+	for _, fun := range fcomp.Functions {
+		// Delete local warm containers
+		node.ShutdownWarmContainersFor(fun)
+	}
 }
 
 // TestInvokeFC_DifferentBranches executes a Parallel broadcast Dag with N parallel DIFFERENT branches.
 func TestInvokeFC_DifferentBranches(t *testing.T) {
-	if !INTEGRATION_TEST {
+	if !IntegrationTest {
 		t.Skip()
 	}
 	//for i := 0; i < 1; i++ {
@@ -423,7 +422,7 @@ func TestInvokeFC_DifferentBranches(t *testing.T) {
 
 // TestInvokeFC_ScatterFanOut executes a Parallel Dag with N parallel branches
 func TestInvokeFC_ScatterFanOut(t *testing.T) {
-	if !INTEGRATION_TEST {
+	if !IntegrationTest {
 		t.Skip()
 	}
 	//for i := 0; i < 1; i++ {
@@ -465,6 +464,70 @@ func TestInvokeFC_ScatterFanOut(t *testing.T) {
 	}
 
 	// cleaning up function composition and functions
+	err3 := fcomp.Delete()
+	u.AssertNil(t, err3)
+}
+
+func TestInvokeSieveChoice(t *testing.T) {
+	if !IntegrationTest {
+		t.Skip()
+	}
+	fcName := "test"
+	input := 13
+	sieveJs, errJs := initializeJsFunction("sieve", function.NewSignature().
+		AddInput("n", function.Int{}).
+		AddOutput("N", function.Int{}).
+		AddOutput("Primes", function.Array[function.Int]{}).
+		Build())
+	u.AssertNil(t, errJs)
+
+	isPrimePy, errPy := initializePyFunction("isprimeWithNumber", "handler", function.NewSignature().
+		AddInput("n", function.Int{}).
+		AddOutput("IsPrime", function.Bool{}).
+		AddOutput("n", function.Int{}).
+		Build())
+	u.AssertNil(t, errPy)
+
+	incPy, errDp := initializePyFunction("inc", "handler", function.NewSignature().
+		AddInput("input", function.Int{}).
+		AddOutput("result", function.Int{}).Build())
+	u.AssertNil(t, errDp)
+
+	dag, errDag := fc.NewDagBuilder().
+		AddSimpleNode(isPrimePy).
+		AddChoiceNode(
+			fc.NewEqParamCondition(fc.NewParam("IsPrime"), fc.NewValue(true)),
+			fc.NewEqParamCondition(fc.NewParam("IsPrime"), fc.NewValue(false)),
+		).
+		NextBranch(fc.CreateSequenceDag(sieveJs)).
+		NextBranch(fc.CreateSequenceDag(incPy)).
+		EndChoiceAndBuild()
+
+	u.AssertNil(t, errDag)
+	fcomp := fc.NewFC(fcName, *dag, []*function.Function{isPrimePy, sieveJs, incPy}, true)
+	err1 := fcomp.SaveToEtcd()
+	u.AssertNil(t, err1)
+
+	// INVOKE - we call the function composition
+	params := make(map[string]interface{})
+	params[isPrimePy.Signature.GetInputs()[0].Name] = input
+
+	request := fc.NewCompositionRequest(shortuuid.New(), &fcomp, params)
+	resultMap, err2 := fcomp.Invoke(request)
+	u.AssertNil(t, err2)
+
+	// checking the result
+	output := resultMap.Result[sieveJs.Signature.GetOutputs()[1].Name]
+	slice, err := u.ConvertToSlice(output)
+	u.AssertNil(t, err)
+
+	res, err := u.ConvertInterfaceToSpecificSlice[float64](slice)
+	u.AssertNil(t, err)
+
+	u.AssertSliceEqualsMsg[float64](t, []float64{2, 3, 5, 7, 11, 13}, res, "output is wrong")
+	fmt.Printf("%+v\n", resultMap)
+
+	// cleaning up function composition and function
 	err3 := fcomp.Delete()
 	u.AssertNil(t, err3)
 }
