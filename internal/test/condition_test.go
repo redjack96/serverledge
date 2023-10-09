@@ -8,10 +8,10 @@ import (
 	"testing"
 )
 
-var predicate1 = fc.Predicate{Root: fc.Condition{Type: fc.And, Sub: []fc.Condition{{Type: fc.Eq, Op: []interface{}{2, 2}}, {Type: fc.Greater, Op: []interface{}{4, 2}}}}}
-var predicate2 = fc.Predicate{Root: fc.Condition{Type: fc.Or, Sub: []fc.Condition{{Type: fc.Const, Op: []interface{}{true}}, {Type: fc.Smaller, Op: []interface{}{4, 2}}}}}
-var predicate3 = fc.Predicate{Root: fc.Condition{Type: fc.Or, Sub: []fc.Condition{predicate1.Root, {Type: fc.Smaller, Op: []interface{}{4, 2}}}}}
-var predicate4 = fc.Predicate{Root: fc.Condition{Type: fc.Not, Sub: []fc.Condition{{Type: fc.Empty, Op: []interface{}{1, 2, 3, 4}}}}}
+var predicate1 = fc.Predicate{Root: fc.Condition{Type: fc.And, Find: []bool{false, false}, Sub: []fc.Condition{{Type: fc.Eq, Op: []interface{}{2, 2}, Find: []bool{false, false}}, {Type: fc.Greater, Op: []interface{}{4, 2}, Find: []bool{false, false}}}}}
+var predicate2 = fc.Predicate{Root: fc.Condition{Type: fc.Or, Find: []bool{false, false}, Sub: []fc.Condition{{Type: fc.Const, Op: []interface{}{true}, Find: []bool{false}}, {Type: fc.Smaller, Op: []interface{}{4, 2}, Find: []bool{false, false}}}}}
+var predicate3 = fc.Predicate{Root: fc.Condition{Type: fc.Or, Find: []bool{false, false}, Sub: []fc.Condition{predicate1.Root, {Type: fc.Smaller, Op: []interface{}{4, 2}, Find: []bool{false, false}}}}}
+var predicate4 = fc.Predicate{Root: fc.Condition{Type: fc.Not, Find: []bool{false}, Sub: []fc.Condition{{Type: fc.Empty, Op: []interface{}{1, 2, 3, 4}, Find: []bool{false}}}}}
 
 func TestPredicateMarshal(t *testing.T) {
 
@@ -30,16 +30,16 @@ func TestPredicateMarshal(t *testing.T) {
 }
 
 func TestPredicate(t *testing.T) {
-	ok := predicate1.Test()
+	ok := predicate1.Test(nil)
 	utils.AssertTrue(t, ok)
 
-	ok2 := predicate2.Test()
+	ok2 := predicate2.Test(nil)
 	utils.AssertTrue(t, ok2)
 
-	ok3 := predicate3.Test()
+	ok3 := predicate3.Test(nil)
 	utils.AssertTrue(t, ok3)
 
-	ok4 := predicate4.Test()
+	ok4 := predicate4.Test(nil)
 	utils.AssertTrue(t, ok4)
 }
 

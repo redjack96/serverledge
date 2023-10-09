@@ -64,7 +64,7 @@ func (c *ChoiceNode) Exec(compRequest *CompositionRequest) (map[string]interface
 	var err error = nil
 	// simply evalutes the Conditions and set the matching one
 	for i, condition := range c.Conditions {
-		ok, err := condition.Test()
+		ok, err := condition.Test(c.input)
 		if err != nil {
 			return nil, fmt.Errorf("error while testing condition: %v", err)
 		}
@@ -158,9 +158,8 @@ func (c *ChoiceNode) GetNext() []DagNodeId {
 	if c.FirstMatch < 0 {
 		panic("first match cannot be less then 0. You should call Exec() before GetNext()")
 	}
-	next := make([]DagNodeId, 1)
-	next[0] = c.Alternatives[c.FirstMatch]
-	return next
+
+	return []DagNodeId{c.Alternatives[c.FirstMatch]}
 }
 
 func (c *ChoiceNode) Width() int {
