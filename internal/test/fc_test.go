@@ -351,24 +351,28 @@ func TestInvokeFC_Concurrent(t *testing.T) {
 		maybeError := <-e
 		u.AssertNilMsg(t, maybeError, "error in goroutine")
 	}
-
+	errorStr := ""
 	for i, r := range results {
 		fmt.Printf("waiting for result for goroutine %d...\n", i)
 		output := <-r
 		fmt.Printf("result of goroutine %d = %d\n", i, output.(int))
-		u.AssertEqualsMsg(t, length+i, output.(int), fmt.Sprintf("output of goroutine %d is wrong", i))
+		if length+i != output.(int) {
+			errorStr += fmt.Sprintf("output of goroutine %d is wrong - expected: %d, actual: %d\n", i, length+i, output.(int))
+		}
 	}
 
 	fmt.Println("deleting all composition and functions...")
 	// cleaning up function composition and function
 	err3 := fcomp.Delete()
-	u.AssertNil(t, err3)
 
 	// removing functions container to release resources
 	for _, fun := range fcomp.Functions {
 		// Delete local warm containers
 		node.ShutdownWarmContainersFor(fun)
 	}
+
+	u.AssertEquals[string](t, "", errorStr)
+	u.AssertNil(t, err3)
 }
 
 // TestInvokeFC_DifferentBranches executes a Parallel broadcast Dag with N parallel DIFFERENT branches.

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/cornelk/hashmap"
 	"github.com/grussorusso/serverledge/utils"
 	"math"
 	"sync"
@@ -22,16 +21,11 @@ func newProgressId(reqId ReqId) ProgressId {
 	return ProgressId("progress_" + reqId)
 }
 
-// TODO: add progress to FunctionComposition CompositionRequest (maybe doesn't exists)
 // Progress tracks the progress of a Dag, i.e. which nodes are executed, and what is the next node to run. Dag progress is saved in ETCD and retrieved by the next node
 type Progress struct {
 	ReqId     ReqId // requestId, used to distinguish different dag's progresses
 	DagNodes  []*DagNodeInfo
 	NextGroup int
-}
-
-type ProgressCache struct {
-	progresses hashmap.Map[ProgressId, *Progress] // a lock-free thread-safe map
 }
 
 type DagNodeInfo struct {
@@ -521,10 +515,9 @@ func saveProgressToEtcd(p *Progress) error {
 }
 
 func getProgressFromCache(progressId ProgressId) (*Progress, bool) {
-	c := progressCache
 	progressMutexCache.Lock()
 	defer progressMutexCache.Unlock()
-	progress, found := c.Load(progressId)
+	progress, found := progressCache.Load(progressId)
 	if !found {
 		return nil, false
 	}
