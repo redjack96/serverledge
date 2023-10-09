@@ -217,15 +217,9 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecuti
 	}
 
 	// deleting progresses and partial datas from cache and etcd
-	err = DeleteProgress(requestId, cache.Persist)
-	if err != nil {
-		return CompositionExecutionReport{}, err
-	}
-	removed, err := DeleteAllPartialData(requestId, cache.Persist)
-	if err != nil {
-		return CompositionExecutionReport{}, err
-	}
-	fmt.Printf("Succesfully deleted %d partial datas and progress for request %s\n", removed, requestId)
+	go DeleteProgress(requestId, cache.Persist)
+	go DeleteAllPartialData(requestId, cache.Persist)
+
 	r.ExecReport.Result = result.Data
 	return r.ExecReport, nil
 }
