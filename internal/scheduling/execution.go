@@ -51,6 +51,7 @@ func Execute(contID container.ContainerID, r *scheduledRequest, fromComposition 
 	}
 
 	r.ExecReport.Result = response.Result
+	// here you should debug
 	r.ExecReport.Duration = time.Now().Sub(t0).Seconds() - invocationWait.Seconds()
 	r.ExecReport.ResponseTime = time.Now().Sub(r.Arrival).Seconds()
 
